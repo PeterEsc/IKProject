@@ -9,7 +9,6 @@ pipeline {
     ue5Path = "C:\\Program Files\\Epic Games\\UE_5.2"
     ue5Project = "IKProject"
     ueProjectFileName = "${ue5Project}.uproject"
-    testSuiteToRun = "Game."//the '.' is used to run all tests inside the prettyname. The automation system searches for everything that has 'Game.' in it, so otherGame.'s tests would run too...
     testReportFolder = "TestsReport"
     testsLogName = "RunTests.log"
     pathToTestsLog = "${env.WORKSPACE}" + "\\Saved\\Logs\\" + "${testsLogName}"
@@ -36,7 +35,7 @@ pipeline {
       steps {
         echo 'Testing Stage Started.'
 
-        bat "TestRunnerAndCodeCoverage.bat \"${ue5Path}\" \"${env.WORKSPACE}\" \"${ueProjectFilename}\" \"${testSuiteToRun}\" \"${testReportFolder}\" \"${testsLogName}\" \"${codeCoverageReportName}\""//runs the tests
+        bat "TestRunnerAndCodeCoverage.bat \"${ue5Path}\" \"${env.WORKSPACE}\" \"${ueProjectFilename}\" \"${testReportFolder}\" \"${testsLogName}\" \"${codeCoverageReportName}\""//runs the tests
       }
       post {
         success {

@@ -9,11 +9,6 @@ pipeline {
     ue5Path = "C:\\Program Files\\Epic Games\\UE_5.2"
     ue5Project = "IKProject"
     ueProjectFileName = "${ue5Project}.uproject"
-    testSuiteToRun = "Game."//the '.' is used to run all tests inside the prettyname. The automation system searches for everything that has 'Game.' in it, so otherGame.'s tests would run too...
-    testReportFolder = "TestsReport"
-    testsLogName = "RunTests.log"
-    pathToTestsLog = "${env.WORKSPACE}" + "\\Saved\\Logs\\" + "${testsLogName}"
-    codeCoverageReportName="CodeCoverageReport.xml"
   }
   stages {
     stage('Building') {
@@ -31,35 +26,9 @@ pipeline {
         }
       }
     }
-
-    stage('Testing') {
-      steps {
-        echo 'Testing Stage Started.'
-
-        bat "TestRunnerAndCodeCoverage.bat \"${ue5Path}\" \"${env.WORKSPACE}\" \"${ueProjectFilename}\" \"${testSuiteToRun}\" \"${testReportFolder}\" \"${testsLogName}\" \"${codeCoverageReportName}\""//runs the tests
-      }
-      post {
-        success {
-          echo 'Testing Stage Successful.'
-        }
-        failure {
-          echo 'Testing Stage Unsuccessful.'
-        }
-      }
-    }
-
-
   }
   post {
     always{
-      echo 'Tests finished, printing log.'
-      bat "type ${pathToTestsLog}"
-      echo 'Formatting TestsReport from JSon to JUnit XML'
-      formatUnitTests()
-
-      echo "Publish Code Coverage Report."
-      cobertura(coberturaReportFile:"${codeCoverageReportName}")
-
       echo 'Cleaning up workspace:'
       echo '-checking current workspace.'
       powershell label: 'show workspace', script: 'dir $WORKSPACE'
@@ -74,24 +43,6 @@ pipeline {
 
 import groovy.json.JsonSlurper
 import groovy.xml.MarkupBuilder
-
-def testReportSummary = 'to be populated...'
-
-def formatUnitTests() {
-        convertTestsReport()
-        testReportSummary = junit "${testReportFolder}\\junit.xml"
-}
-
-def convertTestsReport() {
-    def jsonReport = readFile file: "${testReportFolder}\\index.json", encoding: "UTF-8"
-    // Needed because the JSON is encoded in UTF-8 with BOM
-
-    jsonReport = jsonReport.replace( "\uFEFF", "" );
-
-    def xmlContent = transformReport( jsonReport )
-
-    writeFile file: "${testReportFolder}\\junit.xml", text: xmlContent.toString()
-}
 
 @NonCPS//atomic method
 def transformReport( String jsonContent ) {

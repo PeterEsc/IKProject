@@ -1,73 +1,27 @@
 pipeline {
-  agent {
-    node {
-      label 'main'
-      customWorkspace "C:\\CITestingWorkspace"//use backward slashes to avoid problems with how Windows uses directories!!
+    agent { label 'main' }
+    environment {
+        WIN_ENGINE_DIRECTORY     = 'C:\\ProgramFiles\\EpicGames\\UE_5.2'
+        PROJECT_NAME             =  'IKProject'
     }
-  }//^all this is necessary to run the build in a special workspace.
-  environment {
-    ue5Path = "C:\\Program Files\\Epic Games\\UE_5.2"
-    ue5Project = "IKProject"
-    ueProjectFileName = "${ue5Project}.uproject"
-  }
-  stages {
-    stage('Building') {
-      steps {
-        echo 'Build Stage Started.'
 
-        bat "BuildWithoutCooking.bat \"${ue5Path}\" \"${env.WORKSPACE}\" \"${ueProjectFilename}\""//builds our project
-      }
-      post {
-        success {
-          echo 'Build Stage Successful.'
-        }
-        failure {
-          echo 'Build Stage Unsuccessful.'
-        }
-      }
+    options {
+        timeout(time: 60, unit: 'MINUTES')
     }
-  }
-  post {
-    always{
-      echo 'Cleaning up workspace:'
-      echo '-checking current workspace.'
-      powershell label: 'show workspace', script: 'dir $WORKSPACE'
-      bat 'git reset --hard'//resets to HEAD, to the commit in the cloned repository.
-      bat 'git clean -dffx .'//removes untracked files.
-      echo '-checking clean workspace.'
-      powershell label: 'show workspace', script: 'dir $WORKSPACE'
 
-    }
-  }
-}
-
-import groovy.json.JsonSlurper
-import groovy.xml.MarkupBuilder
-
-@NonCPS//atomic method
-def transformReport( String jsonContent ) {
-
-    def parsedReport = new JsonSlurper().parseText( jsonContent )
-    
-    def jUnitReport = new StringWriter()
-    def builder = new MarkupBuilder( jUnitReport )
-
-    builder.doubleQuotes = true
-    builder.mkp.xmlDeclaration version: "1.0", encoding: "utf-8"
-
-    builder.testsuite( tests: parsedReport.succeeded + parsedReport.failed, failures: parsedReport.failed, time: parsedReport.totalDuration ) {
-      for ( test in parsedReport.tests ) {
-        builder.testcase( name: test.testDisplayName, classname: test.fullTestPath, status: test.state ) {
-          if(test.state == "Fail") {
-            for ( entry in test.entries ) { 
-              if(entry.event.type == "Error") {
-                builder.failure( message: entry.event.message, type: entry.event.type, entry.filename + " " + entry.lineNumber )
-              }
-            }
-          }
+    stages {
+        stage('Windows') {
+            steps {
+                    echo 'Building Windows Client'
+                    script {
+                        if (env.BRANCH_NAME == 'main' || env.BRANCH_NAME.contains('rel_')) {
+                            bat "$WIN_ENGINE_DIRECTORY\\Build\\BatchFiles\\RunUAT.bat BuildCookRun -nocompileeditor -installed -nop4 -project=$WORKSPACE\\$PROJECT_NAME.uproject -cook -stage -archive -archivedirectory=$WORKSPACE\\dist -package -ue4exe=$WIN_ENGINE_DIRECTORY\\Binaries\\Win64\\UE4Editor-Cmd.exe -ddc=DerivedDataBackendGraph -pak -prereqs -distribution -nodebuginfo -targetplatform=Win64 -build -target=$PROJECT_NAME -clientconfig=Shipping -utf8output"
+                        }
+                        else {
+                            bat "$WIN_ENGINE_DIRECTORY\\Build\\BatchFiles\\RunUAT.bat BuildCookRun -nocompileeditor -installed -nop4 -project=$WORKSPACE\\$PROJECT_NAME.uproject -cook -stage -archive -archivedirectory=$WORKSPACE\\dist -package -ue4exe=$WIN_ENGINE_DIRECTORY\\Binaries\\Win64\\UE4Editor-Cmd.exe -ddc=DerivedDataBackendGraph -pak -prereqs -distribution -nodebuginfo -targetplatform=Win64 -build -target=$PROJECT_NAME -clientconfig=Development -utf8output"
+                        }
+                    }
+                }
         }
-      }
-    } 
-
-    return jUnitReport.toString()
+    }
 }

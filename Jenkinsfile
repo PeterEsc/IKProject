@@ -19,10 +19,6 @@ pipeline {
     stage('Building') {
       steps {
         echo 'Build Stage Started.'
-        echo 'sending notification to Slack.'
-        slackSend channel: '#testing-ci', 
-          color: '#4A90E2',
-          message: "Build ${env.BUILD_NUMBER} has started at node ${env.NODE_NAME}..."
 
         bat "BuildWithoutCooking.bat \"${ue5Path}\" \"${env.WORKSPACE}\" \"${ueProjectFilename}\""//builds our project
       }
@@ -61,10 +57,6 @@ pipeline {
       echo 'Formatting TestsReport from JSon to JUnit XML'
       formatUnitTests()
 
-        slackSend channel: "#testing-ci",
-          color: '#c2f2d0',
-          message: "\n *Tests Report Summary* - Total Tests: ${testReportSummary.totalCount}, Failures: ${testReportSummary.failCount}, Skipped: ${testReportSummary.skipCount}, Passed: ${testReportSummary.passCount}"
-
       echo "Publish Code Coverage Report."
       cobertura(coberturaReportFile:"${codeCoverageReportName}")
 
@@ -76,22 +68,6 @@ pipeline {
       echo '-checking clean workspace.'
       powershell label: 'show workspace', script: 'dir $WORKSPACE'
 
-      echo 'Sending build status notification to Slack:'
-    }
-    success{
-        slackSend channel: '#testing-ci',
-          color: 'good', 
-          message: "*${currentBuild.currentResult}:* Build ${env.BUILD_NUMBER} has *succeded!* :innocent:"
-    }
-    unstable{
-        slackSend channel: '#testing-ci',
-          color: '#E2A52E', 
-          message: "*${currentBuild.currentResult}:* Build ${env.BUILD_NUMBER} it's *unstable!* :grimacing:"
-    }
-    failure{
-        slackSend channel: '#testing-ci',
-          color: 'danger', 
-          message: "*${currentBuild.currentResult}:* Build ${env.BUILD_NUMBER} has *failed* :astonished:"
     }
   }
 }
